@@ -47,22 +47,68 @@ U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NO_ACK);	// Display which does not send AC
 
 void draw() {
   // graphic commands to redraw the complete screen should be placed here  
+/*
+for(int x=0 ; x < 128 ; ++x)
   
-  for (int i = 0; i < 8; ++i) {
-    u8g.setColorIndex(i & 1);
-    u8g.drawBox(0, i * 13, 128, 13);
+  for (int y = 0; y < 64; ++y) {
+    //u8g.setColorIndex(i & 1);
+    u8g.setColorIndex(1);
+    u8g.drawPixel(x,y);
+    int c=x%2;
+    int d=y%2;
+    if(c == 1 && d == 1){
+    u8g.setColorIndex(0);
+    u8g.drawPixel(x,y);
+    }
+    else if(c == 0 && d == 0){
+    u8g.setColorIndex(0);
+    u8g.drawPixel(x,y);
+  }
+}
+*/  
+int siz = 3;
+for(int x=0 ; x < u8g.getWidth() ; x = x+siz)
+  
+  for (int y = 0; y < u8g.getHeight(); y = y+siz) {
+    //u8g.setColorIndex(i & 1);
+    u8g.setColorIndex(1);
+    u8g.drawBox(x,y,siz,siz);
+    int c=x/siz;
+    int d=y/siz;
+    c=c%2;
+    d=d%2;
+  if(c == 1 && d == 1){
+    u8g.setColorIndex(0);
+    u8g.drawBox(x,y,siz,siz);
+    }
+    else if(c == 0 && d == 0){
+    u8g.setColorIndex(0);
+    u8g.drawBox(x,y,siz,siz);
+  }
+}
+/*
+  const int sz = 4;
+  for (int x = 0; x < u8g.getWidth(); x += sz) {
+    for (int y = 0; y < u8g.getHeight(); y += sz) {
+      u8g.setColorIndex((x / sz + y / sz) & 1);
+      u8g.drawBox(x, y, sz, sz);
+    } 
+  }
+*/
     
-    u8g.setColorIndex((i + 1) & 1);
+    //u8g.drawBox(0, i * 13, 128, 13);
+    
+    /*u8g.setColorIndex((i + 1) & 1);
     if (i & 1) {
       u8g.drawStr(0, i * 13 + 11, "012345678901234567890");
     }
     else {
       u8g.drawStr(0, i * 13 + 11, "abcdefghijklmnopqrstuvwxyz");
-    }
-  }
+    }*/
+  
 }
 
-void setup() {
+void setup() {/*
   // flip screen, if required
   // u8g.setRot180();
   
@@ -82,7 +128,7 @@ void setup() {
   else if ( u8g.getMode() == U8G_MODE_HICOLOR ) {
     u8g.setHiColorByRGB(255,255,255);
   }
-  
+  */
 }
 
 void loop() {
