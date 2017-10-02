@@ -15,11 +15,13 @@
 
 U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NO_ACK);	// Display which does not send AC
 
-String strfreq,kfreq;
-unsigned long freq;         // Set initial frequency.
+String strfreq,strspeace;
+unsigned long freq,speace,starttime;
 //long unsigned int freqOld = freq;
 
-int step[] = {1, 10, 100, 1000, 10000 ,100000 ,1000000};
+unsigned long step[] = {1, 10, 100, 1000, 10000 ,100000 ,1000000};
+int x = 0;
+boolean buttonpress;
 
 Rotary r = Rotary(CLK, DT);
 
@@ -29,6 +31,8 @@ void setup() {
   pinMode(DATA, OUTPUT);
   pinMode(RESET, OUTPUT);
   
+  pinMode(SW, INPUT_PULLUP);
+  
   pulseHigh(RESET);
   pulseHigh(W_CLK);
   pulseHigh(FQ_UD);
@@ -36,30 +40,52 @@ void setup() {
   Serial.begin(9600);
   freq = 10000;
   sendFrequency(freq);
-	
+  
   u8g.setFont(u8g_font_unifont); //oled
   
   PCICR |= (1 << PCIE2);
   PCMSK2 |= (1 << PCINT18) | (1 << PCINT19);
   sei();
 	
+  speace = step[x];  
+  
+  u8g.setColorIndex(1);
 }
 
 void loop() {
 	u8g.firstPage();
-  do{  
-			/*delay(1000);
-			int x = x + 1;
-			int spacing = step[x];
-			Serial.println(spacing);*/
+  
+  do{
+    if(digitalRead(SW) == LOW){
+      
+      if(!buttonpress){               //按下的瞬間
+        buttonpress = true;
+        x = x + 1;
+        if(x == 7) x = 0;
+        speace = step[x];
+        
+        starttime = millis();
+      }else {
+        if(millis() - starttime >500){ //按著的時候
+          x = x + 1;
+          if(x == 7) x = 0;
+          speace = step[x];
+          
+          starttime = millis();
+        }
+      }      
+    }else buttonpress = false;
+    
     if(freq>0){
 			sendFrequency(freq);
 			strfreq = String(freq);
+      strspeace = String(speace);
     }
-    u8g.setColorIndex(1);
-    u8g.drawStr(0,22,"Signal generator");
-    u8g.drawStr(0,55,"Hz : ");
-		u8g.drawStr(42,55,strfreq.c_str());
+    u8g.drawStr(0,13,"Signal generator");
+    u8g.drawStr(0,38,"Step:");
+    u8g.drawStr(42,38,strspeace.c_str());
+    u8g.drawStr(0,63,"Hz : ");
+		u8g.drawStr(42,63,strfreq.c_str());
 	}while(u8g.nextPage());
 
   delay(50);
@@ -91,13 +117,16 @@ void sendFrequency(double frequency) {
 
 ISR(PCINT2_vect) {
   unsigned char result = r.process();
+
   if (result == DIR_NONE) {
 		//do nothing
   }
   else if (result == DIR_CW && freq < 62500000) {
-    freq = freq + 1000;
+    freq = freq + speace;
+    if (freq > 62500000) freq = 62500000;
   }
   else if (result == DIR_CCW && freq > 1) {
-    freq = freq - 1000;
+    freq = freq - speace;
+    if (freq < 1) freq = 1;
   }
 }
