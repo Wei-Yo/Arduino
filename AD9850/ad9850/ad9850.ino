@@ -1,6 +1,6 @@
-﻿#define W_CLK 8			// AD9850 模組 pin腳
+#define W_CLK 8			// AD9850 模組 pin腳
 #define FQ_UD 7			// AD9850 模組 pin腳
-#define DATA	6			// AD9850 模組 pin腳
+#define DATA  6			// AD9850 模組 pin腳
 #define RESET 5	 		// AD9850 模組 pin腳
 #define SW 4
 #define DT 3
@@ -28,7 +28,7 @@ Rotary r = Rotary(CLK, DT);
 void setup() {
 	pinMode(FQ_UD, OUTPUT);		// AD9850 模組 pin腳
 	pinMode(W_CLK, OUTPUT);   // AD9850 模組 pin腳
-	pinMode(DATA, OUTPUT);    // AD9850 模組 pin腳
+	pinMode(DATA,  OUTPUT);		// AD9850 模組 pin腳
 	pinMode(RESET, OUTPUT);   // AD9850 模組 pin腳
 
 	pinMode(SW, INPUT_PULLUP);
@@ -124,6 +124,6 @@ ISR(PCINT2_vect) {
 	}
 	else if (result == DIR_CCW && freq > 1) {
 		freq = freq - speace;
-		if (freq < 1) freq = 1;
+		if (freq < speace) freq = 1;
 	}
 }
