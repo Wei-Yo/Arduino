@@ -16,7 +16,8 @@
 U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NO_ACK);	// oled控制
 
 String strfreq,strspeace;
-unsigned long freq,speace,starttime;
+unsigned long speace,starttime;
+long freq;
 
 
 unsigned long step[] = {1, 10, 100, 1000, 10000 ,100000 ,1000000};
@@ -124,6 +125,6 @@ ISR(PCINT2_vect) {
 	}
 	else if (result == DIR_CCW && freq > 1) {
 		freq = freq - speace;
-		if (freq < speace) freq = 1;
+		if (freq < 1) freq = 1;
 	}
 }
