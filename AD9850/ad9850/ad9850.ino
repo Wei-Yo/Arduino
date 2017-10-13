@@ -5,6 +5,7 @@
 #define SW 4
 #define DT 3
 #define CLK 2
+#define BUTTON 12
 
 #define AD9850_CLOCK 125000000				 // AD9850 模組 主頻率
 #define MAX_FREQ 62500000
@@ -18,13 +19,14 @@
 U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NO_ACK);	// oled控制
 
 String strfreq,strspeace;
-unsigned long starttime;
+unsigned long starttime,buttontime;
 unsigned long freq, speace;
 
+boolean onoroff,a;
 
 unsigned long step[] = {1, 10, 100, 1000, 10000 ,100000 ,1000000};
 int x = 0;
-boolean buttonpress;
+boolean buttonpress,buttonpress2;
 
 Rotary r = Rotary(CLK, DT);
 
@@ -35,8 +37,9 @@ void setup() {
 	pinMode(RESET, OUTPUT);   // AD9850 模組 pin腳
 
 	pinMode(SW, INPUT_PULLUP);
+	pinMode(BUTTON, INPUT);
 
-	pulseHigh(RESET);
+	pulseHigh(RESET);  
 	pulseHigh(W_CLK);
 	pulseHigh(FQ_UD);
 
@@ -56,12 +59,22 @@ void setup() {
 }
 
 void loop() {
+	if (digitalRead(BUTTON) == LOW){
+		if (!buttonpress2){		//按下的瞬間
+			buttonpress2 = true;
+			onoroff = !onoroff;
+			buttontime = millis();
+		}
+	}else buttonpress2 = false;
+
+	
+
 	u8g.firstPage();
 
 	do{
-		if(digitalRead(SW) == LOW){
+		if (digitalRead(SW) == LOW){
 
-			if(!buttonpress){		//按下的瞬間
+			if (!buttonpress){		//按下的瞬間
 				buttonpress = true;
 				x = x + 1;
 				if(x == 7) x = 0;
@@ -69,7 +82,7 @@ void loop() {
 
 				starttime = millis();
 			}else {
-				if(millis() - starttime >500){		//按著的時候
+				if (millis() - starttime >500){		//按著的時候
 					x = x + 1;
 					if(x == 7) x = 0;
 					speace = step[x];
@@ -79,7 +92,7 @@ void loop() {
 			}
 		}else buttonpress = false;
 
-		if(freq>0){
+		if (freq>0){
 			sendFrequency(freq);
 			strfreq = String(freq);
 			strspeace = String(speace);
@@ -92,7 +105,6 @@ void loop() {
 	}while(u8g.nextPage());
 
 	delay(50);
-
 
 }
 
@@ -114,7 +126,17 @@ void sendFrequency(double frequency) {
 	for (int b = 0; b < 4; b++, freq1 >>= 8) {
 		tfr_byte(freq1 & 0xFF); //取低8位元
 	}
-	tfr_byte(0x00);		// 送出控制的 byte,最後8bit都是 0 給9850
+	
+	if (onoroff){
+		tfr_byte(0x00);	//on
+		Serial.println("on");
+		u8g.drawStr(106,38,"on");
+	}
+	else {
+		tfr_byte(0x04);	//off
+		Serial.println("off");
+		u8g.drawStr(106,38,"off");
+	}
 	pulseHigh(FQ_UD);		// 好!	應該可以看到輸出了
 }
 
