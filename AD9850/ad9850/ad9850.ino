@@ -57,7 +57,7 @@ void setup() {
 
 	u8g.setColorIndex(1);
 }
-
+//哈哈哈哈哈
 void loop() {
 	if (digitalRead(BUTTON) == LOW){
 		if (!buttonpress2){		//按下的瞬間
