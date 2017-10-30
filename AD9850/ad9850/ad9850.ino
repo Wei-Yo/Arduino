@@ -3,8 +3,10 @@
 #define DATA  6			// AD9850 模組 pin腳
 #define RESET 5	 		// AD9850 模組 pin腳
 #define SW 4
-#define DT 3
-#define CLK 2
+#define GAINDT A3
+#define GAINCLK A2
+#define DT A1
+#define CLK A0
 #define BUTTON 9
 #define G2 10
 #define G1 11
@@ -31,6 +33,7 @@ int x = 0;
 boolean buttonpress,buttonpress2;
 
 Rotary r = Rotary(CLK, DT);
+Rotary Gainr = Rotary(GAINCLK, GAINDT);
 
 byte ctrl[8][3] = { {0,0,0},
 										{0,0,1},
@@ -43,7 +46,8 @@ byte ctrl[8][3] = { {0,0,0},
 };
 
 String plus;
-byte Gain,bol;
+byte Gain = 0;
+byte bol;
 int k,y;
 
 void setup() {
@@ -70,8 +74,8 @@ void setup() {
 
 	u8g.setFont(u8g_font_unifont); //oled
 
-	PCICR |= (1 << PCIE2);
-	PCMSK2 |= (1 << PCINT18) | (1 << PCINT19);
+	PCICR |= (1 << PCIE1);
+	PCMSK1 |= (1 << PCINT8) | (1 << PCINT9) | (1 << PCINT10) | (1 << PCINT11);
 	sei();
 
 	speace = step[x];
@@ -151,6 +155,7 @@ void amplitude(byte Gain) {
 		digitalWrite(pin,ctrl[Gain][bol]);
 		pin++;
 	}
+	Serial.println(Gain);
 }
 
 void tfr_byte(byte data) {
@@ -177,9 +182,10 @@ void sendFrequency(double frequency) {
 	pulseHigh(FQ_UD);		// 好!	應該可以看到輸出了
 }
 
-ISR(PCINT2_vect) {
+ISR(PCINT1_vect) {
 	unsigned char result = r.process();
-
+	unsigned char result2 = Gainr.process();
+	Serial.println("0.0");
 	if (result == DIR_CW && freq < MAX_FREQ) {
 		if ((MAX_FREQ - freq) < speace) {
 			freq = MAX_FREQ;
@@ -196,19 +202,13 @@ ISR(PCINT2_vect) {
 			freq -= speace;
 		}
 	}
+	
+	if (result2 == DIR_CW) {
+		if (Gain < 7) Gain ++;
+		amplitude(Gain);
+	}
+	else if (result2 == DIR_CCW) {
+		if (Gain > 0) Gain --;
+		amplitude(Gain);
+	}
 }
-
-/*ISR(PCINT2_vect) {
-	unsigned char result = r.process();
-
-	if (result == DIR_CW) {
-			Gain ++;
-			if (Gain > 7) Gain = 7;
-			amplitude(Gain);
-	}
-	else if (result == DIR_CCW) {
-			Gain --;
-			if (Gain = 255) Gain = 0;
-			amplitude(Gain);
-	}
-}*/
