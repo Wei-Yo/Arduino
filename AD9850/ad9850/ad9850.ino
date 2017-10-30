@@ -5,15 +5,17 @@
 #define SW 4
 #define DT 3
 #define CLK 2
-#define BUTTON 12
+#define BUTTON 9
+#define G2 10
+#define G1 11
+#define G0 12
 
 #define AD9850_CLOCK 125000000				 // AD9850 模組 主頻率
 #define MAX_FREQ 62500000
 #define MIN_FREQ 1
 
 #define pulseHigh(pin) {digitalWrite(pin, HIGH); digitalWrite(pin, LOW); }
-
-#include "U8glib.h"
+#include <U8glib.h>
 #include <Rotary.h>
 
 U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NO_ACK);	// oled控制
@@ -30,6 +32,20 @@ boolean buttonpress,buttonpress2;
 
 Rotary r = Rotary(CLK, DT);
 
+byte ctrl[8][3] = { {0,0,0},
+										{0,0,1},
+										{0,1,0},
+										{0,1,1},
+										{1,0,0},
+										{1,0,1},
+										{1,1,0},
+										{1,1,1},
+};
+
+String plus;
+byte Gain,bol;
+int k,y;
+
 void setup() {
 	pinMode(FQ_UD, OUTPUT);		// AD9850 模組 pin腳
 	pinMode(W_CLK, OUTPUT);   // AD9850 模組 pin腳
@@ -38,12 +54,17 @@ void setup() {
 
 	pinMode(SW, INPUT_PULLUP);
 	pinMode(BUTTON, INPUT);
+	
+	pinMode(G0,OUTPUT);
+	pinMode(G1,OUTPUT);
+	pinMode(G2,OUTPUT);
 
 	pulseHigh(RESET);  
 	pulseHigh(W_CLK);
 	pulseHigh(FQ_UD);
 
 	Serial.begin(9600);
+	
 	freq = 10000;
 	sendFrequency(freq);
 
@@ -59,6 +80,21 @@ void setup() {
 }
 
 void loop() {
+	if (Serial.available()){
+		plus = Serial.readString();
+		if (plus == "+"){
+			Gain ++;
+			if (Gain > 7) Gain = 7;
+			amplitude(Gain);
+			Serial.println(Gain);
+		}
+		else if (plus == "-"){
+			Gain --;
+			if (Gain == 255) Gain = 0;
+			amplitude(Gain);
+			Serial.println(Gain);
+		}
+	}
 	if (digitalRead(BUTTON) == LOW){
 		if (!buttonpress2){		//按下的瞬間
 			buttonpress2 = true;
@@ -67,13 +103,10 @@ void loop() {
 		}
 	}else buttonpress2 = false;
 
-	
-
 	u8g.firstPage();
 
 	do{
 		if (digitalRead(SW) == LOW){
-
 			if (!buttonpress){		//按下的瞬間
 				buttonpress = true;
 				x = x + 1;
@@ -84,7 +117,7 @@ void loop() {
 			}else {
 				if (millis() - starttime >500){		//按著的時候
 					x = x + 1;
-					if(x == 7) x = 0;
+					if (x == 7) x = 0;
 					speace = step[x];
 
 					starttime = millis();
@@ -102,7 +135,7 @@ void loop() {
 		u8g.drawStr(42,38,strspeace.c_str());
 		u8g.drawStr(0,63,"Hz : ");
 		u8g.drawStr(42,63,strfreq.c_str());
-	}while(u8g.nextPage());
+	}while (u8g.nextPage());
 
 	delay(50);
 
@@ -112,7 +145,13 @@ void carry() {
 
 }
 
-
+void amplitude(byte Gain) {
+	byte pin = 10;
+	for (byte bol = 0; bol < 3; bol++) {
+		digitalWrite(pin,ctrl[Gain][bol]);
+		pin++;
+	}
+}
 
 void tfr_byte(byte data) {
 	for (int i = 0; i < 8; i++, data >>= 1) {
@@ -129,12 +168,10 @@ void sendFrequency(double frequency) {
 	
 	if (onoroff){
 		tfr_byte(0x00);	//on
-		Serial.println("on");
 		u8g.drawStr(106,38,"on");
 	}
 	else {
 		tfr_byte(0x04);	//off
-		Serial.println("off");
 		u8g.drawStr(106,38,"off");
 	}
 	pulseHigh(FQ_UD);		// 好!	應該可以看到輸出了
@@ -160,3 +197,18 @@ ISR(PCINT2_vect) {
 		}
 	}
 }
+
+/*ISR(PCINT2_vect) {
+	unsigned char result = r.process();
+
+	if (result == DIR_CW) {
+			Gain ++;
+			if (Gain > 7) Gain = 7;
+			amplitude(Gain);
+	}
+	else if (result == DIR_CCW) {
+			Gain --;
+			if (Gain = 255) Gain = 0;
+			amplitude(Gain);
+	}
+}*/
