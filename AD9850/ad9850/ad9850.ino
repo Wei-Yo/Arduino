@@ -2,11 +2,13 @@
 #define FQ_UD 7			// AD9850 模組 pin腳
 #define DATA  6			// AD9850 模組 pin腳
 #define RESET 5	 		// AD9850 模組 pin腳
-#define SW 4
+
 #define GAINDT A3
 #define GAINCLK A2
 #define DT A1
 #define CLK A0
+#define SW 4
+
 #define BUTTON 9
 #define G2 10
 #define G1 11
@@ -16,13 +18,17 @@
 #define MAX_FREQ 62500000
 #define MIN_FREQ 1
 
+#define K 1000
+#define M 1000000
+#define G 1000000000
+
 #define pulseHigh(pin) {digitalWrite(pin, HIGH); digitalWrite(pin, LOW); }
 #include <U8glib.h>
 #include <Rotary.h>
 
 U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NO_ACK);	// oled控制
 
-String strfreq,strspeace;
+String strfreq,strspeace,strgain;
 unsigned long starttime,buttontime;
 unsigned long freq, speace;
 
@@ -44,11 +50,11 @@ byte ctrl[8][3] = { {0,0,0},
 										{1,1,0},
 										{1,1,1},
 };
+float WaveGain [8] = { 0.08, 0.16, 0.32, 0.63, 1.26, 2.52, 5.01, 10};
 
-String plus;
 byte Gain = 0;
-byte bol;
-int k,y;
+
+float floatfreq,floatspeace;
 
 void setup() {
 	pinMode(FQ_UD, OUTPUT);		// AD9850 模組 pin腳
@@ -59,9 +65,9 @@ void setup() {
 	pinMode(SW, INPUT_PULLUP);
 	pinMode(BUTTON, INPUT);
 	
-	pinMode(G0,OUTPUT);
-	pinMode(G1,OUTPUT);
-	pinMode(G2,OUTPUT);
+	pinMode(G0, OUTPUT);
+	pinMode(G1, OUTPUT);
+	pinMode(G2, OUTPUT);
 
 	pulseHigh(RESET);  
 	pulseHigh(W_CLK);
@@ -84,21 +90,6 @@ void setup() {
 }
 
 void loop() {
-	if (Serial.available()){
-		plus = Serial.readString();
-		if (plus == "+"){
-			Gain ++;
-			if (Gain > 7) Gain = 7;
-			amplitude(Gain);
-			Serial.println(Gain);
-		}
-		else if (plus == "-"){
-			Gain --;
-			if (Gain == 255) Gain = 0;
-			amplitude(Gain);
-			Serial.println(Gain);
-		}
-	}
 	if (digitalRead(BUTTON) == LOW){
 		if (!buttonpress2){		//按下的瞬間
 			buttonpress2 = true;
@@ -116,36 +107,61 @@ void loop() {
 				x = x + 1;
 				if(x == 7) x = 0;
 				speace = step[x];
-
 				starttime = millis();
 			}else {
 				if (millis() - starttime >500){		//按著的時候
 					x = x + 1;
 					if (x == 7) x = 0;
 					speace = step[x];
-
 					starttime = millis();
 				}
 			}
 		}else buttonpress = false;
 
-		if (freq>0){
+		if (freq > 0 && freq < K){
 			sendFrequency(freq);
 			strfreq = String(freq);
-			strspeace = String(speace);
 		}
-		u8g.drawStr(0,13,"Signal generator");
+		
+		else if (freq >= K && freq < M){ //K
+			sendFrequency(freq);
+			floatfreq = freq;
+			floatfreq /= K;
+			strfreq = String(floatfreq);
+			strfreq = strfreq + 'K';
+		}
+		
+		else if (freq >= M && freq < G){ //M
+			sendFrequency(freq);
+			floatfreq = freq;
+			floatfreq /= M;
+			strfreq = String(floatfreq);
+			strfreq = strfreq + 'M';
+		}
+		
+		if (speace < K)strspeace = String(speace);
+		else if (speace >= K && speace < M){
+			floatspeace = speace;
+			floatspeace /= K;
+			strspeace = String(floatspeace);
+			strspeace = strspeace + 'K';
+		} else if (speace >= M){
+			floatspeace = speace;
+			floatspeace /= M;
+			strspeace = String(floatspeace);
+			strspeace = strspeace + 'M';
+		}
+		
+		strgain = WaveGain[Gain];
+		u8g.drawStr(0,13,"Freq:");
+		u8g.drawStr(42,13,strfreq.c_str());
 		u8g.drawStr(0,38,"Step:");
 		u8g.drawStr(42,38,strspeace.c_str());
-		u8g.drawStr(0,63,"Hz : ");
-		u8g.drawStr(42,63,strfreq.c_str());
+		u8g.drawStr(0,63,"Gain:");
+		u8g.drawStr(42,63,strgain.c_str());
 	}while (u8g.nextPage());
 
 	delay(50);
-
-}
-
-void carry() {
 
 }
 
@@ -155,7 +171,6 @@ void amplitude(byte Gain) {
 		digitalWrite(pin,ctrl[Gain][bol]);
 		pin++;
 	}
-	Serial.println(Gain);
 }
 
 void tfr_byte(byte data) {
@@ -185,7 +200,7 @@ void sendFrequency(double frequency) {
 ISR(PCINT1_vect) {
 	unsigned char result = r.process();
 	unsigned char result2 = Gainr.process();
-	Serial.println("0.0");
+	
 	if (result == DIR_CW && freq < MAX_FREQ) {
 		if ((MAX_FREQ - freq) < speace) {
 			freq = MAX_FREQ;
